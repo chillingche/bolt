@@ -295,8 +295,13 @@ fi
 
 export cmake_options="${cmake_options} ${cmake_env_options}"
 echo "[INFO] use ${build_threads} threads to parallel build bolt on ${host} for target ${target} in directory ${BOLT_ROOT}..."
-rm -rf build_${platform} install_${platform}
-mkdir build_${platform} install_${platform}
+# rm -rf build_${platform} install_${platform}
+if [[ ! -d build_${platform} ]]; then
+    mkdir build_${platform}
+fi
+if [[ ! -d install_${platform} ]]; then
+    mkdir install_${platform}
+fi
 cd build_${platform}
 echo "[INFO] use cmake options ${cmake_options}"
 cmake -G"${CMAKE_GENERATOR}" ${cmake_options} .. || exit 1
