@@ -17,6 +17,7 @@ Build Bolt OpenCL library.
 Mandatory arguments to long options are mandatory for short options too.
   -h, --help                 display this help and exit.
   -t, --threads=8            use parallel build(default: 8).
+  --ip=x.x.x.x               use ip to access remote device.
   --device=xxx               set to use android device xxx.
   --target=<android-aarch64|android-armv7> target device system and hardware setting.
   -d, --directory=xxx        bolt model directory on android device.
@@ -26,7 +27,8 @@ EOF
 
 threads=8
 target=android-aarch64
-TEMP=`getopt -o "ht:d:" -al help,threads:,target:,device:,directory: -- "$@"`
+use_ip_addr=""
+TEMP=`getopt -o "ht:d:" -al help,threads:,target:,ip:,device:,directory: -- "$@"`
 if [[ ${TEMP} != *-- ]]; then
     echo "[ERROR] ${script_name} can not recognize ${TEMP##*-- }"
     echo "maybe it contains invalid character(such as Chinese)."
@@ -41,6 +43,9 @@ while true ; do
             shift ;;
         -t|--threads)
             threads=$2
+            shift 2 ;;
+        --ip)
+            ip=$2
             shift 2 ;;
         --device)
             device=$2
@@ -58,6 +63,10 @@ while true ; do
 done
 
 source ${BOLT_ROOT}/scripts/setup_compiler.sh || exit 1
+
+if [[ ${ip} != "" ]]; then
+    use_ip_addr="-H ${ip}"
+fi
 
 #Set your preprocess_ocl program file location of host
 preprocess_ocl=${BOLT_ROOT}/install_android-aarch64/tools/preprocess_ocl
@@ -77,22 +86,22 @@ device_work_local=/data/local/tmp/preprocess
 device_algo_files=${device_work_local}/algoFiles
 device_include=${device_work_local}/include
 device_cpp=${device_work_local}/cpp
-adb -s ${device} shell "rm -rf ${device_work_local}"
-adb -s ${device} shell "mkdir ${device_work_local}"
-adb -s ${device} shell "mkdir ${device_work_local}/lib"
-adb -s ${device} shell "mkdir ${device_algo_files}"
-adb -s ${device} shell "mkdir ${device_include}"
-adb -s ${device} shell "mkdir ${device_cpp}"
+adb ${use_ip_addr} -s ${device} shell "rm -rf ${device_work_local}"
+adb ${use_ip_addr} -s ${device} shell "mkdir ${device_work_local}"
+adb ${use_ip_addr} -s ${device} shell "mkdir ${device_work_local}/lib"
+adb ${use_ip_addr} -s ${device} shell "mkdir ${device_algo_files}"
+adb ${use_ip_addr} -s ${device} shell "mkdir ${device_include}"
+adb ${use_ip_addr} -s ${device} shell "mkdir ${device_cpp}"
 
-adb -s ${device} push ${preprocess_ocl} ${device_work_local} > /dev/null || exit 1
+adb ${use_ip_addr} -s ${device} push ${preprocess_ocl} ${device_work_local} > /dev/null || exit 1
 
 echo "Running GPU preprocess on device ${device}"
-adb -s ${device} shell "cd ${device_work_local} && chmod +x preprocess_ocl && export LD_LIBRARY_PATH=./lib && ./preprocess_ocl ${device_bolt_models} ${device_algo_files} ${device_include} ${device_cpp}" || exit 1
+adb ${use_ip_addr} -s ${device} shell "cd ${device_work_local} && chmod +x preprocess_ocl && export LD_LIBRARY_PATH=./lib && ./preprocess_ocl ${device_bolt_models} ${device_algo_files} ${device_include} ${device_cpp}" || exit 1
 echo "Finish GPU preprocess on device ${device}"
 
 echo "Aquire kernelBins from device ${device}"
-adb -s ${device} pull ${device_include} ${host_include} > /dev/null || exit 1
-adb -s ${device} pull ${device_cpp} ${host_cpp} > /dev/null || exit 1
+adb ${use_ip_addr} -s ${device} pull ${device_include} ${host_include} > /dev/null || exit 1
+adb ${use_ip_addr} -s ${device} pull ${device_cpp} ${host_cpp} > /dev/null || exit 1
 
 if [[ -d ${host_include}/include ]]; then    
     mv ${host_include}/include/* ${host_include}
@@ -127,7 +136,7 @@ ${CXX} ${CXXFLAGS} -shared -o ${host_lib}/lib${lib_name}.so ${sharedSrcs} \
     -L${BOLT_ROOT}/third_party/android-aarch64/opencl/lib -lOpenCL -Wl,-soname,lib${lib_name}.so || exit 1
 ${STRIP} ${host_lib}/lib${lib_name}.so || exit 1
 
-adb -s ${device} shell "rm -rf ${device_work_local}"
+adb ${use_ip_addr} -s ${device} shell "rm -rf ${device_work_local}"
 rm -rf ${host_work_local}
 cd ${current_dir}
 echo "Generate ${host_lib}/lib${lib_name}.so"
