@@ -160,12 +160,16 @@ void CNN::initialize_ops(const ModelSpec *ms)
     UNI_DEBUG_LOG("Initialize inference...\n");
     int opNum = ms->num_operator_specs;
 
+    this->inputTensorNamesInOrder.resize(ms->num_inputs);
     for (int i = 0; i < ms->num_inputs; i++) {
+        this->inputTensorNamesInOrder[i] = ms->input_names[i];
         this->inputTensors[ms->input_names[i]] = this->allocate_tensor();
         this->inputTensors[ms->input_names[i]]->resize(ms->input_dims[i]);
         this->tensorMap[ms->input_names[i]] = this->allocate_tensor();
     }
+    this->outputTensorNamesInOrder.resize(ms->num_outputs);
     for (int i = 0; i < ms->num_outputs; i++) {
+        this->outputTensorNamesInOrder[i] = ms->output_names[i];
         this->outputTensors[ms->output_names[i]] = this->allocate_tensor();
     }
 
@@ -409,6 +413,16 @@ TensorDesc CNN::get_tensor_desc_by_name(std::string tensorName)
         desc = this->tensorMap[tensorName]->get_desc();
     }
     return desc;
+}
+
+const std::vector<std::string> &CNN::get_input_names_in_order() const
+{
+    return this->inputTensorNamesInOrder;
+}
+
+const std::vector<std::string> &CNN::get_output_names_in_order() const
+{
+    return this->outputTensorNamesInOrder;
 }
 
 std::map<std::string, TensorDesc> CNN::get_input_desc()

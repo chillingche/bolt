@@ -408,7 +408,7 @@ int GetNumInputsFromModel(ModelHandle ih)
         CNN *cnn = (CNN *)ihInfo->cnn;
         assert_not_nullptr(__FUNCTION__, "ModelHandle.cnn", cnn);
         if (cnn != nullptr) {
-            ret = (cnn->get_input_desc()).size();
+            ret = (cnn->get_input_names_in_order()).size();
         }
     }
     UNI_DEBUG_LOG("C API %s(%d) end.\n", __FUNCTION__, ret);
@@ -450,7 +450,8 @@ void GetInputDataInfoFromModel5D(ModelHandle handle,
     CNN *cnn = (CNN *)ihInfo->cnn;
     assert_not_nullptr(__FUNCTION__, "ModelHandle.cnn", cnn);
 
-    std::map<std::string, TensorDesc> inputTensorDescs = cnn->get_input_desc();
+    const std::vector<std::string> &inputNames = cnn->get_input_names_in_order();
+    const std::map<std::string, TensorDesc> inputTensorDescs = cnn->get_input_desc();
     if (num_inputs != (int)inputTensorDescs.size()) {
         UNI_ERROR_LOG("C API %s: number of inputs is not match, please use GetNumInputsFromModel "
                       "to get the right value.\n",
@@ -471,9 +472,9 @@ void GetInputDataInfoFromModel5D(ModelHandle handle,
     DataFormat idf;
     U32 in, ic, it, ih, iw;
     int i = 0;
-    for (auto iter : inputTensorDescs) {
-        UNI_STRCPY(name[i], iter.first.c_str());
-        TensorDesc desc = iter.second;
+    for (const std::string &inputName : inputNames) {
+        UNI_STRCPY(name[i], inputName.c_str());
+        const TensorDesc &desc = inputTensorDescs.at(inputName);
         in = ic = it = ih = iw = 1;
         if (tensorIs1d(desc)) {
             CHECK_STATUS(tensor1dGet(desc, &idt, &idf, &in));
@@ -655,19 +656,19 @@ ResultHandle AllocAllResultHandle(ModelHandle ih)
         assert_not_nullptr(__FUNCTION__, "ModelHandle.cnn", cnn);
         if (cnn != nullptr) {
             model_result_ptr = (ResultHandleInner *)UNI_MALLOC(sizeof(ResultHandleInner));
-            std::map<std::string, TensorDesc> outputTensorDescs = cnn->get_output_desc();
+            const std::vector<std::string> &outputNames = cnn->get_output_names_in_order();
+            const std::map<std::string, TensorDesc> outputTensorDescs = cnn->get_output_desc();
             int num_outputs = outputTensorDescs.size();
             DataDesc *outputArrPtr = (DataDesc *)UNI_MALLOC(sizeof(DataDesc) * num_outputs);
             int i = 0;
-            for (auto iter : outputTensorDescs) {
-                std::string name = iter.first;
-                U32 length = name.size();
+            for (const std::string &outputName : outputNames) {
+                U32 length = outputName.size();
                 length = (length > NAME_LEN) ? NAME_LEN : length;
-                UNI_MEMCPY(outputArrPtr[i].name, name.c_str(), length);
+                UNI_MEMCPY(outputArrPtr[i].name, outputName.c_str(), length);
                 if (length < NAME_LEN) {
                     outputArrPtr[i].name[length] = '\0';
                 }
-                TensorDesc2DataDesc(iter.second, &outputArrPtr[i]);
+                TensorDesc2DataDesc(outputTensorDescs.at(outputName), &outputArrPtr[i]);
                 i++;
             }
             model_result_ptr->num_outputs = num_outputs;

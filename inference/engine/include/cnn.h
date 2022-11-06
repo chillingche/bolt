@@ -43,6 +43,9 @@ public:
 
     EE mark_input_output();
 
+    const std::vector<std::string> &get_input_names_in_order() const;
+    const std::vector<std::string> &get_output_names_in_order() const;
+
     std::map<std::string, TensorDesc> get_input_desc();
 
     std::map<std::string, std::shared_ptr<Tensor>> get_input();
@@ -110,6 +113,8 @@ private:
     std::set<std::string> weightOpOutputNames;
     std::map<std::string, std::shared_ptr<Tensor>> inputTensors;
     std::map<std::string, std::shared_ptr<Tensor>> outputTensors;
+    std::vector<std::string> inputTensorNamesInOrder;
+    std::vector<std::string> outputTensorNamesInOrder;
     std::vector<std::shared_ptr<Tensor>> storageMemory;
     Tensor tmpTensor;
     std::map<I32, std::vector<std::shared_ptr<Tensor>>> storageImage;
